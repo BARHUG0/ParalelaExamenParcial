@@ -1,4 +1,4 @@
-# Consultoría Riman's Graph 
+# Consultoría Node Limit
 ## Conexiones que suman
 
 ### Integrantes

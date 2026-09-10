@@ -204,10 +204,38 @@ static void imprimir_camino(const int *camino, int longitud) {
     printf("\n");
 }
 
-int main(void) {
+static int parsear_hilos(const char *texto, int *hilos, int maximo) {
+    int n = 0;
+    const char *p = texto;
+    while (*p && n < maximo) {
+        hilos[n++] = atoi(p);
+        while (*p && *p != ',') p++;
+        if (*p) p++;
+    }
+    return n;
+}
+
+int main(int argc, char **argv) {
     Grafo g;
     int max_hilos = omp_get_max_threads();
-    int hilos_prueba[] = {1, 2, 4, 8};
+    int hilos_prueba[16];
+    int num_configs;
+    int repeticiones = (argc > 2) ? atoi(argv[2]) : 3;
+    unsigned int semilla_ejecucion = (argc > 1) ? (unsigned int)strtoul(argv[1], NULL, 10) : SEMILLA;
+
+    if (argc > 3) {
+        num_configs = parsear_hilos(argv[3], hilos_prueba, 16);
+    } else {
+        hilos_prueba[0] = 1;
+        hilos_prueba[1] = 2;
+        hilos_prueba[2] = 4;
+        hilos_prueba[3] = 8;
+        num_configs = 4;
+    }
+
+    if (argc > 1) {
+        semilla = semilla_ejecucion;
+    }
 
     generar_grafo(&g);
 
@@ -219,6 +247,7 @@ int main(void) {
     }
     printf("Grafo: %d nodos, %d aristas dirigidas, grado maximo %d\n", NUM_NODOS, aristas_dirigidas, grado_maximo);
     printf("Consultas: %d pares de usuarios conectados\n", NUM_CONSULTAS);
+    printf("Semilla: %u, repeticiones: %d\n", semilla_ejecucion, repeticiones);
 
     int *padre = malloc(NUM_NODOS * sizeof(int));
     int *visitados = malloc(NUM_NODOS * sizeof(int));
@@ -250,46 +279,54 @@ int main(void) {
 
     double t0, t1, tiempo_seq, tiempo_par;
 
-    t0 = omp_get_wtime();
-    for (int q = 0; q < NUM_CONSULTAS; q++) {
-        memset(visitados, 0, NUM_NODOS * sizeof(int));
-        bfs_secuencial(&g, consultas[q][0], consultas[q][1], padre, visitados, cola);
-        longitudes_seq[q] = reconstruir_camino(padre, consultas[q][1], camino);
-    }
-    t1 = omp_get_wtime();
-    tiempo_seq = t1 - t0;
-
-    printf("\nCamino de ejemplo de %d a %d: ", consultas[NUM_CONSULTAS - 1][0], consultas[NUM_CONSULTAS - 1][1]);
-    imprimir_camino(camino, longitudes_seq[NUM_CONSULTAS - 1]);
-
-    int errores = 0;
     printf("\n%-8s %-14s %-10s %-12s\n", "Hilos", "Tiempo (s)", "Speedup", "Eficiencia");
-    printf("%-8d %-14.3f %-10.2f %-11.1f%%\n", 1, tiempo_seq, 1.0, 100.0);
 
-    for (int c = 0; c < 4; c++) {
-        int h = hilos_prueba[c];
-        if (h > max_hilos) continue;
-
+    for (int r = 0; r < repeticiones; r++) {
         t0 = omp_get_wtime();
         for (int q = 0; q < NUM_CONSULTAS; q++) {
             memset(visitados, 0, NUM_NODOS * sizeof(int));
-            int hallado = bfs_paralelo(&g, consultas[q][0], consultas[q][1], padre, visitados,
-                                       frontera, siguiente, tareas, buf_locales, h);
-            if (hallado) {
-                longitudes_par[q] = reconstruir_camino(padre, consultas[q][1], camino_par);
-            } else {
-                longitudes_par[q] = 0;
-            }
-            if (longitudes_par[q] != longitudes_seq[q]) errores++;
+            bfs_secuencial(&g, consultas[q][0], consultas[q][1], padre, visitados, cola);
+            longitudes_seq[q] = reconstruir_camino(padre, consultas[q][1], camino);
         }
         t1 = omp_get_wtime();
-        tiempo_par = t1 - t0;
+        tiempo_seq = t1 - t0;
 
-        double speedup = tiempo_seq / tiempo_par;
-        printf("%-8d %-14.3f %-10.2f %-11.1f%%\n", h, tiempo_par, speedup, 100.0 * speedup / h);
+        printf("%-8d %-14.3f %-10.2f %-11.1f%%\n", 1, tiempo_seq, 1.0, 100.0);
+        printf("DATOS,secuencial,1,%d,%.6f\n", r, tiempo_seq);
+
+        if (r == 0) {
+            printf("\nCamino de ejemplo de %d a %d: ", consultas[NUM_CONSULTAS - 1][0], consultas[NUM_CONSULTAS - 1][1]);
+            imprimir_camino(camino, longitudes_seq[NUM_CONSULTAS - 1]);
+            printf("\n");
+        }
+
+        int errores = 0;
+        for (int c = 0; c < num_configs; c++) {
+            int h = hilos_prueba[c];
+            if (h > max_hilos) continue;
+
+            t0 = omp_get_wtime();
+            for (int q = 0; q < NUM_CONSULTAS; q++) {
+                memset(visitados, 0, NUM_NODOS * sizeof(int));
+                int hallado = bfs_paralelo(&g, consultas[q][0], consultas[q][1], padre, visitados,
+                                           frontera, siguiente, tareas, buf_locales, h);
+                if (hallado) {
+                    longitudes_par[q] = reconstruir_camino(padre, consultas[q][1], camino_par);
+                } else {
+                    longitudes_par[q] = 0;
+                }
+                if (longitudes_par[q] != longitudes_seq[q]) errores++;
+            }
+            t1 = omp_get_wtime();
+            tiempo_par = t1 - t0;
+
+            double speedup = tiempo_seq / tiempo_par;
+            printf("%-8d %-14.3f %-10.2f %-11.1f%%\n", h, tiempo_par, speedup, 100.0 * speedup / h);
+            printf("DATOS,paralelo,%d,%d,%.6f\n", h, r, tiempo_par);
+        }
+
+        printf("Verificacion repeticion %d: %d diferencias de longitud\n", r, errores);
     }
-
-    printf("\nVerificacion: %d diferencias de longitud entre las dos versiones\n", errores);
 
     for (int t = 0; t < max_hilos; t++) free(buf_locales[t]);
     free(buf_locales);

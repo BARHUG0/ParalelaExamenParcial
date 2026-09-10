@@ -1,0 +1,16 @@
+modo,hilos,repeticion,tiempo
+secuencial,1,0,3.538
+paralelo,1,0,3.427
+paralelo,2,0,2.301
+paralelo,4,0,1.434
+paralelo,8,0,0.953
+secuencial,1,1,3.501
+paralelo,1,1,3.401
+paralelo,2,1,2.248
+paralelo,4,1,1.461
+paralelo,8,1,0.958
+secuencial,1,2,3.442
+paralelo,1,2,3.466
+paralelo,2,2,2.336
+paralelo,4,2,1.432
+paralelo,8,2,0.954

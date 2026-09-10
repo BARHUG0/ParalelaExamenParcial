@@ -7,10 +7,11 @@ from statistics import mean
 RAIZ = Path(__file__).resolve().parent
 FUENTE_PARALELO = RAIZ / "paralelo" / "busquedaRutaMinimaParalela.c"
 FUENTE_SECUENCIAL = RAIZ / "secuencial" / "busquedaRutaMinima.c"
-EJECUTABLE = RAIZ / "paralelo" / "busquedaRutaMinimaParalela.exe"
+SUFIX = "_problema_grafo"
+EJECUTABLE = RAIZ / "paralelo" / f"busquedaRutaMinimaParalela{SUFIX}.exe"
 DIR_RESULTADOS = RAIZ / "resultados"
-ARCHIVO_RESULTADOS = DIR_RESULTADOS / "resultados.csv"
-ARCHIVO_RESUMEN = DIR_RESULTADOS / "resumen.csv"
+ARCHIVO_RESULTADOS = DIR_RESULTADOS / f"resultados{SUFIX}.csv"
+ARCHIVO_RESUMEN = DIR_RESULTADOS / f"resumen{SUFIX}.csv"
 
 COLUMNAS = ["modo", "hilos", "repeticion", "tiempo"]
 COLUMNAS_RESUMEN = ["modo", "hilos", "repeticiones", "tiempo_promedio", "speedup", "eficiencia"]

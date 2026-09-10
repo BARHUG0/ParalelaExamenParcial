@@ -1,0 +1,6 @@
+modo,hilos,repeticiones,tiempo_promedio,speedup,eficiencia
+secuencial,1,3,2.237247,1.0000,100.00
+paralelo,1,3,2.420000,0.9245,92.45
+paralelo,2,3,1.448667,1.5443,77.22
+paralelo,4,3,0.763000,2.9322,73.30
+paralelo,8,3,0.406667,5.5014,68.77
